@@ -1,7 +1,7 @@
-# Teste Data Engineer - Melhor Envio
+# Teste Engenheiro de Dados - Melhor Envio
 ## Instruções
 
-Neste teste, o objetivo é transformar e carregar os dados contidos no arquivo zip (contidos neste repositório nomeado como `data.zip`) para um banco de dados PostgreSQL.
+Neste teste, o objetivo é transformar e carregar os dados contidos no arquivo zip (presente neste repositório nomeado como `data.zip`) para um banco de dados PostgreSQL.
 
 Os arquivos contêm informações sobre códigos e eventos de rastreamento de compras em plataformas de e-commerce.
 
