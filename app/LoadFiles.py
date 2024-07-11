@@ -7,7 +7,7 @@ import psycopg2
 
 class LoadFiles():
 
-    def __init__(self, schema:str, table:str):
+    def __init__(self, schema:str, table:str, path:str = '.env'):
         self.schema = schema
         self.table = table
         self.path = path
@@ -40,6 +40,17 @@ class LoadFiles():
                 else:
                     return pd.read_sql(text(query), self.conn)
             except Exception as e:
+                return None
+            finally:
+                self.close_connect()
+    
+    def query(self, query):
+            try:
+                self.create_connect()
+                out = pd.read_sql(query, self.conn)
+                return out
+            except Exception as e:
+                print(f'Falha ao realizar consulta no banco de dados: {e}')
                 return None
             finally:
                 self.close_connect()
