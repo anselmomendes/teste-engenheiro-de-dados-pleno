@@ -1,20 +1,14 @@
 import pandas as pd
 from datetime import datetime
-from app.ExtractFiles import ExtractFiles
-from app.TransformFiles import TransformFiles
-from app.LoadFiles import LoadFiles
+from libary.ExtractFiles import ExtractFiles
+from libary.TransformFiles import TransformFiles
+from libary.LoadFiles import LoadFiles
 import json
 import glob
 import warnings
 from dotenv import load_dotenv
 import os
 warnings.filterwarnings("ignore")
-
-load_dotenv(dotenv_path='./env', override=True)
-
-POSTGRES_DB = os.environ.get("POSTGRES_DB")
-POSTGRES_USER = os.environ.get("POSTGRES_USER")
-POSTGRES_PASSWORD = os.environ.get("POSTGRES_PASSWORD")
 
 # diretório onde os arquivos estão localizados
 zip_file_path = 'data.zip'
@@ -29,24 +23,25 @@ arquivos = glob.glob('.//data/*csv')
 
 # Imprima os nomes dos arquivos
 files = pd.DataFrame(arquivos, columns=['arquivos'])
-files['arquivos'] = files['arquivos'].apply(lambda x: x.split('\\')[1])
+print(files['arquivos'][0])
+files['arquivos'] = files['arquivos'].apply(lambda x: x.split('data/')[1])
 files['arquivos'] = files['arquivos'].apply(lambda x: x.split('.')[0])
 files['date'] = pd.to_datetime(files['arquivos'], format='%Y%m%d-%H%M%S%f')
 files = files.sort_values(by='date', ascending=True)
 #files.tail(3)
 
 for index, file in files.iterrows():
-    print(f'INICIANDO A CARGA DOS DADOS: {index} / {file.shape[1]}')
+    print(f'INICIANDO A CARGA DOS DADOS: {index} / {files.shape[0]}')
     transform_files = TransformFiles(files_name=f"./data/{file['arquivos']}.csv")
     order = transform_files.order()
     order_temp = order.drop(columns=['op'])
 
-    load_files = LoadFiles(schema='public', table='order_temp')
+    load_files = LoadFiles(schema='public', table='order_temp', path='.env')
     load_files.to_table(order)
 
     def insert_dimensao(schema, table, key):
         try:
-            load_files = LoadFiles(schema=schema, table=table)
+            load_files = LoadFiles(schema=schema, table=table, path='.env')
             load_files.execute_query(query=f'''
             insert into {table} ({table})
             select distinct ot.{key} as {table}
@@ -66,10 +61,10 @@ for index, file in files.iterrows():
 
     order_insert = order[order['op'] == 'I'].drop(columns=['op'])
 
-    load_files = LoadFiles(schema='public', table='order_temp_insert')
+    load_files = LoadFiles(schema='public', table='order_temp_insert', path='.env')
     load_files.to_table(order_insert)
 
-    load_files = LoadFiles(schema='public', table='order_main')
+    load_files = LoadFiles(schema='public', table='order_main', path='.env')
 
     try:
         query = '''insert into order_main (oid_id, created_at, updated_at, last_sync_tracker, order_created_at, order_tracking_code_id, order_status_id, order_description, order_tracker_type, order_from_id, order_to_id)
@@ -97,7 +92,7 @@ for index, file in files.iterrows():
 
     order_update = order[order['op'] == 'U'].drop(columns=['op'])
 
-    load_files = LoadFiles(schema='public', table='order_temp_update')
+    load_files = LoadFiles(schema='public', table='order_temp_update', path='.env')
     load_files.to_table(order_update)
 #Apaga os registros que serão atualizados
     try:
