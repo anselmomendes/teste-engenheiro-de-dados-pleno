@@ -27,8 +27,29 @@ Utilize a seguinte docker image do PostgreSQL: [postgres:12.16](https://hub.dock
 
 - Desenvolver 3 queries como forma de relatório para validação dos dados:
 	- Total de rastreamentos criados por minuto
+```sql
+
+```
 	- Total de eventos por código de rastreamento
+```sql
+select oid_id,
+on2.order_number as numero_da_orden,
+count(*) as total 
+from order_main om
+left join order_number on2 on om.oid_id = on2.id
+group by oid_id, on2.order_number
+order by count(*) desc
+```
+
 	- TOP 10 descrições de eventos mais comuns e seus totais
+```sql
+select upper(order_description) as order_description, 
+count(*) as total
+from order_main om
+where order_description is not null
+group by order_description
+order by 2 desc
+```
 
 ## Sobre os dados
 
