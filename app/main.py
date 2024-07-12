@@ -31,7 +31,7 @@ files = files.sort_values(by='date', ascending=True)
 #files.tail(3)
 
 for index, file in files.iterrows():
-    print(f'INICIANDO A CARGA DOS DADOS: {file.index} / {files.shape[0]}')
+    print(f'INICIANDO A CARGA DOS DADOS: {index} / {files.shape[0]}')
     transform_files = TransformFiles(files_name=f"./data/{file['arquivos']}.csv")
     order = transform_files.order()
     order_temp = order.drop(columns=['op'])
