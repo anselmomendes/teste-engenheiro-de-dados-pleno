@@ -12,8 +12,8 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-#    networks:
-#      net-postgres:
+    networks:
+      net-postgres:
     volumes:
       - db-data:/var/lib/postgresql/data
       - ./sql/create_tables.sql:/docker-entrypoint-initdb.d/create_tables.sql
@@ -28,10 +28,17 @@ services:
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
     ports:
       - "5050:80"
-#    networks:
-#      net-postgres:
+    networks:
+      net-postgres:
     depends_on:
       - db
+
+  python_load:
+    build: .
+    depends_on:
+      - db
+    networks:
+      net-postgres:
 
 volumes:
   db-data:
@@ -39,4 +46,3 @@ volumes:
 networks:
   net-postgres:
     driver: bridge
-
