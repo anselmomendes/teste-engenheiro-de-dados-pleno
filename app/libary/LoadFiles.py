@@ -7,21 +7,18 @@ import psycopg2
 
 class LoadFiles():
 
-    def __init__(self, schema:str, table:str, path:str = '.env'):
+    def __init__(self, schema:str, table:str, path:str):
         self.schema = schema
         self.table = table
         self.path = path
+        self.conn = None
     
     def create_connect(self):
         try:
-            self.path = load_dotenv(dotenv_path=self.path, override=True)
-            try:
-                engine = create_engine(os.environ.get(f"SQLALCHEMY"))
-                self.conn = engine.connect()
-            except Exception as e:
-                    print(f'Falha ao estabeler conexão com banco de dados : {e}')
+            engine = create_engine('''postgresql://melhorenvio:melhorenvio123@db:5432/melhorenvio''')
+            self.conn = engine.connect()
         except Exception as e:
-            print(f"Falha ao importar as variaveis de ambiente.")
+            print(f'Falha ao estabeler conexão com banco de dados - create_connect: {e}')
 
     def close_connect(self):
         try:
@@ -40,7 +37,7 @@ class LoadFiles():
                 else:
                     return pd.read_sql(text(query), self.conn)
             except Exception as e:
-                return None
+                print(f'Erro ao fechar conexão: {e} - select_table')
             finally:
                 self.close_connect()
     
@@ -49,14 +46,14 @@ class LoadFiles():
             conn = psycopg2.connect(database="melhorenvio", 
                                     user='melhorenvio', 
                                     password='melhorenvio123', 
-                                    host='localhost', 
+                                    host='db', 
                                     port='5432') 
             conn.autocommit = True
             cursor = conn.cursor()
             cursor.execute(query) 
             conn.commit() 
         except Exception as e:
-            print(f'Falha ao realizar consulta no banco de dados: {e}')
+            print(f'Falha ao realizar consulta no banco de dados: - execute_query{e}')
         finally:
             conn.close() 
 
@@ -65,7 +62,7 @@ class LoadFiles():
             self.create_connect()
             return pd.read_sql_query(text(query), self.conn)
         except Exception as e:
-            print(f'Falha ao realizar consulta no banco de dados: {e}')
+            print(f'Falha ao realizar consulta no banco de dados: - query {e}')
             return None
         finally:
             self.close_connect()
@@ -76,7 +73,7 @@ class LoadFiles():
             df.to_sql(self.table, schema=self.schema, con=self.conn, if_exists='append', index=False)
             return True
         except Exception as e:
-            print(f'Falha ao realizar consulta no banco de dados: {e}')
+            print(f'Falha ao realizar consulta no banco de dados: to_table- {e}')
             return False
         finally:
             self.close_connect()
