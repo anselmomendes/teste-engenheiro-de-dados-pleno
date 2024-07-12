@@ -44,24 +44,39 @@ class LoadFiles():
             finally:
                 self.close_connect()
     
+    def execute_query(self, query):
+        try:
+            conn = psycopg2.connect(database="melhorenvio", 
+                                    user='melhorenvio', 
+                                    password='melhorenvio123', 
+                                    host='localhost', 
+                                    port='5432') 
+            conn.autocommit = True
+            cursor = conn.cursor()
+            cursor.execute(query) 
+            conn.commit() 
+        except Exception as e:
+            print(f'Falha ao realizar consulta no banco de dados: {e}')
+        finally:
+            conn.close() 
+
     def query(self, query):
-            try:
-                self.create_connect()
-                out = pd.read_sql(query, self.conn)
-                return out
-            except Exception as e:
-                print(f'Falha ao realizar consulta no banco de dados: {e}')
-                return None
-            finally:
-                self.close_connect()
+        try:
+            self.create_connect()
+            return pd.read_sql_query(text(query), self.conn)
+        except Exception as e:
+            print(f'Falha ao realizar consulta no banco de dados: {e}')
+            return None
+        finally:
+            self.close_connect()
 
     def to_table(self, df, schema=None, table=None):
-            try:
-                self.create_connect()
-                df.to_sql(self.table, schema=self.schema, con=self.conn, if_exists='append', index=False)
-                return True
-            except Exception as e:
-                print(f'Falha ao realizar consulta no banco de dados: {e}')
-                return False
-            finally:
-                self.close_connect()
+        try:
+            self.create_connect()
+            df.to_sql(self.table, schema=self.schema, con=self.conn, if_exists='append', index=False)
+            return True
+        except Exception as e:
+            print(f'Falha ao realizar consulta no banco de dados: {e}')
+            return False
+        finally:
+            self.close_connect()
