@@ -28,7 +28,10 @@ Utilize a seguinte docker image do PostgreSQL: [postgres:12.16](https://hub.dock
 - Desenvolver 3 queries como forma de relatório para validação dos dados:
 	- Total de rastreamentos criados por minuto
 ```sql
-
+select (extract(day from max(om.created_at) - min(om.created_at)) * 24 * 60) as qtd_min,
+count(distinct om.oid_id) as qtd_rastreios,
+count(distinct om.oid_id)/(extract(day from max(om.created_at) - min(om.created_at)) * 24 * 60) as rastreamentos_por_minutos
+from order_main om
 ```
 	- Total de eventos por código de rastreamento
 ```sql
