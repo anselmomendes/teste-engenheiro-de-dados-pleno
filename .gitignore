@@ -3,3 +3,6 @@
 */.ipynb_checkpoints/*
 */.vscode/*
 */.venv
+app/libary/__pycache__/ExtractFiles.cpython-311.pyc
+app/libary/__pycache__/LoadFiles.cpython-311.pyc
+app/libary/__pycache__/TransformFiles.cpython-311.pyc
