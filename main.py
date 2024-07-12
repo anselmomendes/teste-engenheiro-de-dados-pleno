@@ -6,7 +6,15 @@ from app.LoadFiles import LoadFiles
 import json
 import glob
 import warnings
+from dotenv import load_dotenv
+import os
 warnings.filterwarnings("ignore")
+
+load_dotenv(dotenv_path='./env', override=True)
+
+POSTGRES_DB = os.environ.get("POSTGRES_DB")
+POSTGRES_USER = os.environ.get("POSTGRES_USER")
+POSTGRES_PASSWORD = os.environ.get("POSTGRES_PASSWORD")
 
 # diretório onde os arquivos estão localizados
 zip_file_path = 'data.zip'
@@ -27,9 +35,11 @@ files['date'] = pd.to_datetime(files['arquivos'], format='%Y%m%d-%H%M%S%f')
 files = files.sort_values(by='date', ascending=True)
 #files.tail(3)
 
-for file in files['arquivos']:
-    transform_files = TransformFiles(files_name=f"./data/{file}.csv")
+for index, file in files.iterrows():
+    print(f'INICIANDO A CARGA DOS DADOS: {index} / {file.shape[1]}')
+    transform_files = TransformFiles(files_name=f"./data/{file['arquivos']}.csv")
     order = transform_files.order()
+    order_temp = order.drop(columns=['op'])
 
     load_files = LoadFiles(schema='public', table='order_temp')
     load_files.to_table(order)
@@ -37,7 +47,7 @@ for file in files['arquivos']:
     def insert_dimensao(schema, table, key):
         try:
             load_files = LoadFiles(schema=schema, table=table)
-            load_files.query(query=f'''
+            load_files.execute_query(query=f'''
             insert into {table} ({table})
             select distinct ot.{key} as {table}
             from order_temp ot
@@ -46,7 +56,7 @@ for file in files['arquivos']:
             order by 1''')
             print(f'Tabela Dimensão {table} carregada com sucesso!')
         except Exception as e:
-            print(f'O que é isso? {e}')
+            print(f'Erro: {e}')
 
     insert_dimensao(schema='public', table='order_number', key='oid_id')
     insert_dimensao(schema='public', table='order_tracking_code', key='order_tracking_code')
@@ -80,7 +90,7 @@ for file in files['arquivos']:
         left join order_status os on os.order_status = ot.order_status 
         left join order_from of2 on of2.order_from = ot.order_from
         left join order_to ot2 on ot2.order_to = ot.order_to'''
-        load_files.query(query)
+        load_files.execute_query(query)
         print(f'Tabela Dimensão order_main carregada com sucesso!') 
     except Exception as e:
         print(e)
@@ -89,61 +99,50 @@ for file in files['arquivos']:
 
     load_files = LoadFiles(schema='public', table='order_temp_update')
     load_files.to_table(order_update)
-
+#Apaga os registros que serão atualizados
     try:
-        query = '''with update_insert as
-                (select otu.*
-                from order_temp_update otu
-                left join order_number on2 on otu.oid_id = on2.order_number
-                left join order_main om on on2.id  = om.oid_id 
-                where om.oid_id is not null)
-                update order_main
-                        set created_at = otu.created_at,
-                        updated_at = otu.updated_at,
-                        last_sync_tracker = otu.last_sync_tracker,
-                        order_created_at = otu.order_created_at,
-                        order_tracking_code_id = otc.id,
-                        order_status_id = os.id,
-                        order_description = otu.order_description,
-                        order_tracker_type = otu.order_tracker_type,
-                        order_from_id = of2.id,
-                        order_to_id = ot2.id
-                        from update_insert otu
-                        left join order_tracking_code otc on otc.order_tracking_code = otu.order_tracking_code
-                        left join order_status os on os.order_status = otu.order_status
-                        left join order_from of2 on of2.order_from = otu.order_from
-                        left join order_to ot2 on ot2.order_to = otu.order_to'''
-        load_files.query(query)
+        query = '''with delete_ordens as
+                    (select distinct on2.id
+                    from order_temp_update om 
+                    left join order_number on2 on om.oid_id = on2.order_number
+                    where on2.order_number is not null)
+                    DELETE FROM public.order_main ord
+                    WHERE ord.oid_id in (select oid_id from delete_ordens)'''
+        load_files.execute_query(query)
         print(f'Tabela Dimensão order_main atualizada com sucesso!')
     except Exception as e:
         print(e)
 
+#Insere os registros sem conflito
     try:
-        query = '''with only_insert as
-                (select otu.*
-                from order_temp_update otu
-                left join order_number on2 on otu.oid_id = on2.order_number
-                left join order_main om on on2.id  = om.oid_id 
-                where om.oid_id is not null)
-                insert into order_main (oid_id, created_at, updated_at, last_sync_tracker, order_created_at, order_tracking_code_id, order_status_id, order_description, order_tracker_type, order_from_id, order_to_id)
-                select on2.id as oid_id,
-                created_at,
-                updated_at,
-                last_sync_tracker,
-                order_created_at,
-                otc.id as order_tracking_code_id,
-                os.id as order_status,
-                order_description,
-                order_tracker_type,
-                of2.id as order_from_id,
-                ot2.id as order_to_id
-                from only_insert ot 
-                left join order_number on2 on on2.order_number  = ot.oid_id 
-                left join order_tracking_code otc on otc.order_tracking_code = ot.order_tracking_code
-                left join order_status os on os.order_status = ot.order_status 
-                left join order_from of2 on of2.order_from = ot.order_from
-                left join order_to ot2 on ot2.order_to = ot.order_to'''
-        load_files.query(query)
+        query = '''insert into order_main (oid_id, created_at, updated_at, last_sync_tracker, order_created_at, order_tracking_code_id, order_status_id, order_description, order_tracker_type, order_from_id, order_to_id)
+        select on2.id as oid_id,
+        created_at,
+        updated_at,
+        last_sync_tracker,
+        order_created_at,
+        otc.id as order_tracking_code_id,
+        os.id as order_status,
+        order_description,
+        order_tracker_type,
+        of2.id as order_from_id,
+        ot2.id as order_to_id
+        from order_temp_update ot 
+        left join order_number on2 on on2.order_number  = ot.oid_id 
+        left join order_tracking_code otc on otc.order_tracking_code = ot.order_tracking_code
+        left join order_status os on os.order_status = ot.order_status 
+        left join order_from of2 on of2.order_from = ot.order_from
+        left join order_to ot2 on ot2.order_to = ot.order_to'''
+        load_files.execute_query(query)
         print(f'Tabela Dimensão order_main atualizada com sucesso!')
     except Exception as e:
         print(e)
+
+#Apaga as tabelas temporarias
+try:
+    tables = ['order_temp', 'order_temp_insert', 'order_temp_update']
+    for table in tables:
+        load_files.execute_query(f'drop table {table}')
+        print(f'Tabela Dimensão order_main atualizada com sucesso!')
+except Exception as e:
+    print(e)
